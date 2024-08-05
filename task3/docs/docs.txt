@@ -1,0 +1,20 @@
+Library Management System
+
+Overview
+This is a console based library management system implemented in Go. It demonstrates the use of structs, interfaces, and other Go functionalities such as methods, slices, and maps.
+
+Features
+Add a new book
+Remove an existing book
+Borrow a book
+Return a borrowed book
+List  available books
+List  borrowed books 
+
+main.go: Entry point of the application.
+controllers/library_controller.go: Handles console input and invokes the appropriate service methods.
+models/book.go: Defines the Book struct.
+models/member.go: Defines the Member struct.
+services/library_service.go: Contains business logic and data manipulation functions.
+docs/documentation.txt: Contains system documentation and other related information.
+go.mod: Defines the module and its dependencies.
