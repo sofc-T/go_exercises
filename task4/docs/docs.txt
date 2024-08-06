@@ -1,0 +1,23 @@
+Task Management System API 
+Manage your taks remotely
+
+
+Features:
+Create A Task
+See Tasks
+Find a Task 
+Delete a Task 
+Update A Task
+
+folder structure:
+main.go: Entry point of the application.
+controllers/task_controller.go: Handles incoming HTTP requests and invokes the appropriate service methods.
+models/: Defines the data structures used in the application.
+data/task_service.go: Contains business logic and data manipulation functions.
+router/router.go: Sets up the routes and initializes the Gin router and Defines the routing configuration for the API.
+docs/api_documentation.md: Contains API documentation and other related documentation.
+
+
+api documentation : follow the link below:
+
+-> https://documenter.getpostman.com/view/32082424/2sA3rxrZcG
