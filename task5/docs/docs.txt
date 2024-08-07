@@ -1,0 +1,112 @@
+Task Management System API 
+Manage your taks remotely
+
+
+Features:
+Create A Task
+See Tasks
+Find a Task 
+Delete a Task 
+Update A Task
+
+folder structure:
+main.go: Entry point of the application.
+controllers/task_controller.go: Handles incoming HTTP requests and invokes the appropriate service methods.
+models/: Defines the data structures used in the application.
+data/task_service.go: Contains business logic and data manipulation functions.
+router/router.go: Sets up the routes and initializes the Gin router and Defines the routing configuration for the API.
+docs/api_documentation.md: Contains API documentation and other related documentation.
+
+
+api documentation : follow the link below:
+
+-> https://documenter.getpostman.com/view/32082424/2sA3rxrZcG
+
+
+
+
+Database and services documentation 
+
+Variables
+db: A pointer to the mongo.Client which holds the MongoDB client instance.
+Functions
+SetUpDataBase(uri string) (*mongo.Client, error)
+Sets up the database connection using the provided URI.
+
+Parameters:
+
+uri (string): The MongoDB URI.
+Returns:
+
+(*mongo.Client, error): The MongoDB client instance and an error if any occurred.
+Description:
+
+Applies the URI options.
+Connects to the MongoDB server.
+Sets the global db variable to the connected client.
+FetchTasks() ([]models.Task, error)
+Fetches all tasks from the database.
+
+Returns:
+
+([]models.Task, error): A slice of tasks and an error if any occurred.
+Description:
+
+Retrieves all documents from the tasks collection in the task_manager database.
+Decodes the documents into a slice of models.Task.
+FindTask(id int) (models.Task, error)
+Finds a specific task by its ID.
+
+Parameters:
+
+id (int): The ID of the task to find.
+Returns:
+
+(models.Task, error): The task with the specified ID and an error if any occurred.
+Description:
+
+Filters the tasks collection for a document with the specified ID.
+Decodes the document into a models.Task.
+UpdateTask(id int, title string) (models.Task, error)
+Updates the title of a task with the specified ID.
+
+Parameters:
+
+id (int): The ID of the task to update.
+title (string): The new title for the task.
+Returns:
+
+(models.Task, error): The updated task and an error if any occurred.
+Description:
+
+Filters the tasks collection for a document with the specified ID.
+Updates the title of the task.
+Returns the updated task.
+DeleteTask(id int) error
+Deletes a task with the specified ID.
+
+Parameters:
+
+id (int): The ID of the task to delete.
+Returns:
+
+error: An error if any occurred.
+Description:
+
+Filters the tasks collection for a document with the specified ID.
+Deletes the document.
+InsertTask(id int, title string) (models.Task, error)
+Inserts a new task with the specified ID and title.
+
+Parameters:
+
+id (int): The ID of the new task.
+title (string): The title of the new task.
+Returns:
+
+(models.Task, error): The newly inserted task and an error if any occurred.
+Description:
+
+Creates a new models.Task with the specified ID and title.
+Inserts the task into the tasks collection.
+Example Usage
