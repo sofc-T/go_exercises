@@ -16,6 +16,7 @@ func main(){
 	sentence := string(sentenceByte)
 	strings.TrimSpace(sentence)
 	sentence = trimPunctuation(sentence)
+	s := strings.ToLower(s)
 	count:=  Counter(sentence)
 	fmt.Println(count)
 	
@@ -46,7 +47,6 @@ func trimPunctuation(s string) string {
 
 func chackPalidrome(s string) bool{
 	left, right := 0, len(s)
-	s := strings.ToLower(s)
 	for left < right{
 		if s[left] == s[right]{
 			left += 1
