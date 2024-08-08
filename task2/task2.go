@@ -16,6 +16,7 @@ func main(){
 	sentence := string(sentenceByte)
 	strings.TrimSpace(sentence)
 	sentence = trimPunctuation(sentence)
+	s := strings.ToLower(s)
 	count:=  Counter(sentence)
 	fmt.Println(count)
 	
