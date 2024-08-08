@@ -94,7 +94,7 @@ func DeleteTaskHandler(ctx *gin.Context){
 	}
 
 	ctx.Status(http.StatusNoContent)
-	return
+	
 
 }
 

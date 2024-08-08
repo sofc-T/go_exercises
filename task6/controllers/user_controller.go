@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	adminNotCreated bool
+	// adminNotCreated bool
 )
 
 func SignUp(ctx *gin.Context) {
-	
+		
 }
