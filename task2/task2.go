@@ -46,6 +46,7 @@ func trimPunctuation(s string) string {
 
 func chackPalidrome(s string) bool{
 	left, right := 0, len(s)
+	s := string.ToLower(s)
 	for left < right{
 		if s[left] == s[right]{
 			left += 1
