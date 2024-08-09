@@ -3,6 +3,7 @@ package Utils
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -24,47 +25,60 @@ type SignedDetails struct{
 var jwt_secret_key string
 
 func ImportJWTSecretKey() (string, error) {
-	err := godotenv.Load(".env")
-	if err != nil{
-		return "", errors.New("secret key not defined in env")
-	}
-	jwt_secret_key = os.Getenv("jwt_secret_key")
-	if jwt_secret_key == "" {
-		return "",  errors.New("secret key not defined in env")
-	}
+    log.Println("Loading environment variables from .env file")
+    err := godotenv.Load(".env")
+    if err != nil {
+        log.Println("Error loading .env file:", err)
+        return "", errors.New("secret key not defined in env")
+    }
 
-	return jwt_secret_key, nil
+    jwt_secret_key = os.Getenv("jwt_secret_key")
+    log.Println("Retrieved JWT secret key from environment variable")
+
+    if jwt_secret_key == "" {
+        log.Println("JWT secret key is not defined in the environment")
+        return "", errors.New("secret key not defined in env")
+    }
+
+    return jwt_secret_key, nil
 }
 
-func GenerateTokens(email string, name string, UID string, role string ) (*string , *string, error){
 
-	if jwt_secret_key == ""{
-		ImportJWTSecretKey()
-	}
+func GenerateTokens(email string, name string, UID string, role string) (*string, *string, error) {
 
-	claims := &SignedDetails{
-		email, name, UID, role, jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 5).Unix(),
-		},
-	}
+    if jwt_secret_key == "" {
+        ImportJWTSecretKey()
+    }
 
-	refreshClaims := &SignedDetails{
-		email, name, UID, role, jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 168).Unix(),
-		},
-	}
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwt_secret_key))
-	if err != nil{
-		return nil, nil, errors.New("couldn't Generate Token")
-	}
-	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(jwt_secret_key))
+    claims := &SignedDetails{
+        email, name, UID, role, jwt.StandardClaims{
+            ExpiresAt: time.Now().Add(time.Hour * 5).Unix(),
+        },
+    }
 
-	if err != nil{
-		return nil, nil, errors.New("couldn't Generate Refresh Token")
-	}
+    refreshClaims := &SignedDetails{
+        email, name, UID, role, jwt.StandardClaims{
+            ExpiresAt: time.Now().Add(time.Hour * 168).Unix(),
+        },
+    }
 
+    log.Println("Generating token with claims:", claims)
+    token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwt_secret_key))
+    if err != nil {
+        log.Println("Error generating token:", err)
+        return nil, nil, errors.New("couldn't generate token")
+    }
+    log.Println("Generated token:", token)
 
-	return &token, &refreshToken, nil 
+    log.Println("Generating refresh token with claims:", refreshClaims)
+    refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(jwt_secret_key))
+    if err != nil {
+        log.Println("Error generating refresh token:", err)
+        return nil, nil, errors.New("couldn't generate refresh token")
+    }
+    log.Println("Generated refresh token:", refreshToken)
+
+    return &token, &refreshToken, nil
 }
 
 func ValidateToken(signedToken string) (*SignedDetails , error){

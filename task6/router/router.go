@@ -11,7 +11,7 @@ func SetUpRouoter() *gin.Engine{
 
 	r := gin.Default()
 
-    r.POST("/register", controllers.CreateTaskHandler)
+    r.POST("/register", controllers.SignUp)
     r.POST("/login", controllers.Login)
 
     auth := r.Group("/")

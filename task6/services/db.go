@@ -2,12 +2,14 @@ package services
 
 import (
 	"context"
+	
 	"log"
 	"os"
-	"time"	
+	"time"
+
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"	
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -40,13 +42,18 @@ func CreateDatabaseInstance() *mongo.Client{
 	ctx, cancel := context.WithTimeout(context.Background(), 15 * time.Second)
 
 
-	Client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(ctx, clientOptions)
 	defer cancel()
-
+	
 	if err != nil{
 		log.Fatal("Couldn't create ")
 	}
+	err = client.Ping(ctx, nil)
+    if err != nil {
+        log.Fatalf("Failed to ping MongoDB: %v", err)
+    }
 
+	Client = client
 	return Client
 }
 

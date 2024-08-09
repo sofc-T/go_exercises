@@ -2,17 +2,19 @@ package services
 
 import (
 	"context"
-	"log"
-	"go.mongodb.org/mongo-driver/bson"
-	"github.com/sofc-t/task_manager/task6/models"
 	"errors"
+	"fmt"
+	"log"
+
+	"github.com/sofc-t/task_manager/task6/models"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 
 
 func FetchTasks() ([]models.Task, error ){
 	if Client == nil || Db_mongo_name == ""{
-		log.Fatal("Trying to access a collection before connecting to database")
+		log.Fatal("Trying to access a collection before connecting to databasee")
 	}
 	Client := Client.Database("task_manager").Collection("tasks")
 	cursor, err := Client.Find(context.TODO(), bson.D{})
@@ -34,7 +36,7 @@ func FetchTasks() ([]models.Task, error ){
 
 func FindTask(id int) (models.Task , error){
 	if Client == nil || Db_mongo_name == ""{
-		log.Fatal("Trying to access a collection before connecting to database")
+		log.Fatal("Trying to access a collection before connecting to databasee")
 	}
 	filter := bson.D{{Key: "id" , Value: id}}
 	Client := Client.Database("task_manager").Collection("tasks")
@@ -51,7 +53,7 @@ func FindTask(id int) (models.Task , error){
 
 func UpdateTask(id int, title string) (models.Task, error){
 	if Client == nil || Db_mongo_name == ""{
-		log.Fatal("Trying to access a collection before connecting to database")
+		log.Fatal("Trying to access a collection before connecting to databasee")
 	}
 	Client := Client.Database("task_manager").Collection("tasks")
 	filter := bson.D{{Key: "id" , Value: id}}
@@ -68,7 +70,7 @@ func UpdateTask(id int, title string) (models.Task, error){
 
 func DeleteTask(id int) (error){
 	if Client == nil || Db_mongo_name == ""{
-		log.Fatal("Trying to access a collection before connecting to database")
+		log.Fatal("Trying to access a collection before connecting to databasee")
 	}
 	Client := Client.Database("task_manager").Collection("tasks")
 	filter := bson.D{{Key: "id" , Value: id}}
@@ -83,8 +85,9 @@ func DeleteTask(id int) (error){
 
 
 func InsertTask(id int, title string) (models.Task , error){
+	fmt.Println(Db_mongo_name, Client)
 	if Client == nil || Db_mongo_name == ""{
-		log.Fatal("Trying to access a collection before connecting to database")
+		log.Fatal("Trying to access a collection before connecting to databasee")
 	}
 	Client := Client.Database("task_manager").Collection("tasks")
 	task := models.Task{Id: id, Title: title}
