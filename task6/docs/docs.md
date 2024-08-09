@@ -1,6 +1,11 @@
 Task Management System API 
 Manage your taks remotely
 
+the following variables should be defined from the .env file
+db_mongo_uri:
+db_mongo_name:
+jwt_secret_key
+	
 
 Features:
 Create A Task
