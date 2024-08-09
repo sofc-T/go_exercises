@@ -8,6 +8,8 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 
@@ -96,5 +98,22 @@ func ValidateToken(signedToken string) (*SignedDetails , error){
 	return claims, nil
 
 } 
+
+
+
+func UpdateAllTokens(signedToken string, signedRefreshToken string) primitive.D{
+	
+
+	var updateObj primitive.D
+	
+	updateObj = append(updateObj, bson.E{Key: "token", Value: signedToken})
+	updateObj = append(updateObj, bson.E{Key: "refresh_token", Value: signedRefreshToken})
+
+	Updated_at, _ := time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+	updateObj = append(updateObj, bson.E{Key: "updated_at", Value: Updated_at})
+
+
+	return updateObj
+}
 
 

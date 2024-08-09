@@ -4,13 +4,6 @@ import (
 )
 
 
-type TaskManagerInterface interface{
-	GetAllTasks() []Task 
-	GetTask(id int) Task
-	UpdateTask(id int, task Task) Task 
-	DeleteTask(id int)
-	CreateTask(id int, Title string)
-}
 
 
 

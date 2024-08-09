@@ -8,6 +8,15 @@ type TaskManager struct{
 	Tasks []*models.Task
 }
 
+type TaskManagerInterface interface{
+	GetAllTasks() []models.Task 
+	GetTask(id int) models.Task
+	UpdateTask(id int, task models.Task) models.Task 
+	DeleteTask(id int)
+	CreateTask(id int, Title string)
+}
+
+
 func (t *TaskManager) GetAllTasks() []*models.Task{
 	return t.Tasks
 }
