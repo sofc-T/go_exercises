@@ -1,13 +1,13 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sofc-t/task_manager/task6/services"
 	"github.com/sofc-t/task_manager/task6/models"
-	
+	"github.com/sofc-t/task_manager/task6/services"
 )
 
 
@@ -102,12 +102,13 @@ func DeleteTaskHandler(ctx *gin.Context){
 func CreateTaskHandler(ctx *gin.Context){
 	var task models.Task 
 	err := ctx.BindJSON(&task)
+	
 	if err != nil{
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message":"Invalid Input"})
 		return 
 	}
-
-	result, err := services.InsertTask(task.Id, task.Title)
+	fmt.Println(task, "task")
+	result, err := services.InsertTask(task.Id, task.TaskId, task.Title)
 	if err != nil{
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message":"Could not Delete Task"})
 		return 

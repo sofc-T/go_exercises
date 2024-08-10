@@ -24,7 +24,7 @@ func SignUp(ctx *gin.Context) {
 	
 	err := services.CreateUser(user)
 	if err  != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message" : "Internal server Error"})
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message" : err.Error()})
 		return
 
 	}
@@ -45,7 +45,7 @@ func Login(ctx *gin.Context) {
 
 	token, err := services.Login(user)
 	if err  != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message" : err})
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message" : err.Error()})
 		return
 
 	}
@@ -64,7 +64,7 @@ func GetUseryID(ctx *gin.Context) {
     }
 	user, err := services.FetchUserByID(id)
 	if id == "" {
-        ctx.JSON(http.StatusBadRequest, gin.H{"error": err})
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
 

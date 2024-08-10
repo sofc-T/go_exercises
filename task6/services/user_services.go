@@ -3,10 +3,10 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
-	
 	"github.com/sofc-t/task_manager/task6/models"
 	"github.com/sofc-t/task_manager/task6/utils"
 	"go.mongodb.org/mongo-driver/bson"
@@ -49,19 +49,18 @@ func CreateUser(user *models.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
-	filter := bson.D{{Key: "Email", Value: user.Email}}
+	filter := bson.D{{Key: "email", Value: user.Email}}
 	userCollection := GetDatabaseCollection("user")
-
 	var existingUser models.User
 	err := userCollection.FindOne(ctx, filter).Decode(&existingUser)
+	fmt.Println(existingUser, *user.Email)
 	if err == nil {
 		log.Println("User already exists with email:", user.Email)
-		return errors.New("user Already Exists")
+		return errors.New("user already exists")
 	} else if err != mongo.ErrNoDocuments {
 		log.Println("Error checking for existing user:", err)
 		return errors.New("internal server error")
 	}
-	log.Println("No existing user found")
 
 	if !adminCreated {
 		adminCreated = true
@@ -120,7 +119,7 @@ func Login(user *models.User) (string, error ) {
 		log.Println("Error finding user:", err)
 		return "", errors.New("user does not exist")
 	}
-
+	
 	if existingUser.Email == nil {
 		log.Println("User email is nil, user does not exist")
 		return "", errors.New("user does not exist")
@@ -203,6 +202,8 @@ func FetchAllUsers() error {
 
 func FetchUserByID(id string) (models.User, error){
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
 	userCollection := GetDatabaseCollection("user")
 	var user models.User 
 
