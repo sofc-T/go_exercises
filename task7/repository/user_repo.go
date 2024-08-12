@@ -21,7 +21,6 @@ var (
 	gue = "user"
 	admin = &adm 
 	guest = &gue
-	adminCreated bool
 )
 
 type userRepository struct {
@@ -36,16 +35,7 @@ func NewUserRepository(db mongo.Database, collection string) models.UserReposito
 	}
 }
 
-func hashPassword(password string) (string, error){
-	log.Println("hashing", password)
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 13)
-	if err != nil{
-		log.Println("couldnt Generate Password")
-		return "", errors.New("couldnt Generate Password")
-	}
-	log.Println("hashed")
-	return string(bytes), nil
-}
+
 
 func verifyPassword(existingPassword string, newPassword string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(newPassword), []byte(existingPassword))
@@ -74,37 +64,6 @@ func (u userRepository)CreateUser(ctx context.Context, user models.User) error {
 		log.Println("Error checking for existing user:", err)
 		return errors.New("internal server error")
 	}
-
-	if !adminCreated {
-		adminCreated = true
-		user.Role = admin
-		log.Println("Assigned Admin role to new user")
-	} else {
-		user.Role = guest
-		log.Println("Assigned role : user")
-	}
-
-	user.CreatedAt = time.Now()
-	user.UpdatedAT = time.Now()
-	user.ID = primitive.NewObjectID()
-	user.UserID = user.ID.Hex()
-	log.Println("id generated")
-
-	password, err := hashPassword(*user.Password)
-	if err != nil {
-		log.Println("Error hashing password:", err)
-		return errors.New("couldn't parse password")
-	}
-	user.Password = &password
-
-	token, refreshToken, err := Utils.GenerateTokens(*user.Email, *user.Name, user.UserID, *user.Role)
-	if err != nil {
-		log.Println("Error generating tokens:", err)
-		return errors.New("internal server error")
-	}
-
-	user.Token = token
-	user.RefreshToken = refreshToken
 
 	_, err = userCollection.InsertOne(ctx, user)
 	if err != nil {
