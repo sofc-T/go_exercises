@@ -17,18 +17,19 @@ type TaskRepositorySuite struct {
 	suite.Suite
 	mtestInstance *mtest.T
 	repo          models.TaskRepository
-	db            mongo.Database
+	db            *mongo.Database
 }
 
 func (suite *TaskRepositorySuite) SetupSuite() {
 	suite.mtestInstance = mtest.New(suite.T(), mtest.NewOptions().ClientType(mtest.Mock))
-	suite.db = *suite.mtestInstance.Client.Database("taskmanager")
-	suite.repo = repository.NewTaskRepository(suite.db, "tasks")
+	suite.db = suite.mtestInstance.Client.Database("taskmanager")
+	suite.repo = repository.NewTaskRepository(*suite.db, "tasks")
 }
 
 func (suite *TaskRepositorySuite) TearDownSuite() {
-	fmt.Println("tearing Down")
+	fmt.Println("TEaring Down")
 }
+
 
 func (suite *TaskRepositorySuite) TestFetchTasks() {
 	suite.mtestInstance.AddMockResponses(mtest.CreateCursorResponse(1, "taskmanager.tasks", mtest.FirstBatch, bson.D{
@@ -38,7 +39,7 @@ func (suite *TaskRepositorySuite) TestFetchTasks() {
 
 	tasks, err := suite.repo.FetchTasks(context.TODO())
 	suite.NoError(err)
-	suite.Equal(1, len(tasks))
+	suite.Len(tasks, 1)
 	suite.Equal("Test Task", tasks[0].Title)
 }
 

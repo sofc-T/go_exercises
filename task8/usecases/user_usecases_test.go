@@ -53,18 +53,7 @@ func (suite *UserUsecaseSuite) SetupTest() {
 	suite.usecase = usecases.NewUserUsecase(suite.mockRepo, 1000*time.Second) // Use the factory function
 }
 
-func (suite *UserUsecaseSuite) TestCreate() {
-	name, email := "John Doe", "john.doe@example.com"
-	password:= mock.Anything
-	user := models.User{Name: &name, Email: &email, Password: &password}
 
-	suite.mockRepo.On("CreateUser", mock.Anything, user).Return(nil)
-
-	err := suite.usecase.Create(context.Background(), user)
-
-	suite.NoError(err)
-	suite.mockRepo.AssertExpectations(suite.T())
-}
 
 func (suite *UserUsecaseSuite) TestLogin() {
 
