@@ -18,9 +18,7 @@ import (
 
 var (
 	adm   = "admin"
-	gue   = "user"
 	admin = &adm
-	guest = &gue
 )
 
 type userRepository struct {
