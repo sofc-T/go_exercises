@@ -2,81 +2,95 @@ package repository_test
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"testing"
 
-	"github.com/sofc-t/task_manager/task8/models"
-	"github.com/sofc-t/task_manager/task8/repository"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/sofc-t/task_manager/task8/models"
+	"github.com/sofc-t/task_manager/task8/repository"
 )
 
 type TaskRepositorySuite struct {
 	suite.Suite
-	mtestInstance *mtest.T
-	repo          models.TaskRepository
-	db            *mongo.Database
+	TaskRepository models.TaskRepository
+	collection     *mongo.Collection
 }
 
 func (suite *TaskRepositorySuite) SetupSuite() {
-	suite.mtestInstance = mtest.New(suite.T(), mtest.NewOptions().ClientType(mtest.Mock))
-	suite.db = suite.mtestInstance.Client.Database("taskmanager")
-	suite.repo = repository.NewTaskRepository(*suite.db, "tasks")
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017") // Replace with your MongoDB URI
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	database := client.Database("taskmanager_test") // Use a test database
+	collection := database.Collection("tasks")
+	suite.collection = collection
+	collection.DeleteMany(context.TODO(), bson.D{{}})
+	suite.TaskRepository = repository.NewTaskRepository(*database, "tasks")
 }
 
-func (suite *TaskRepositorySuite) TearDownSuite() {
-	fmt.Println("TEaring Down")
+func (suite *TaskRepositorySuite) SetupTest() {
+	
 }
 
+// Tests InsertTask function
+func (suite *TaskRepositorySuite) TestInsertTask() {
+	task := models.Task{Id: 1, Title: "Test Task"}
+	insertedTask, err := suite.TaskRepository.InsertTask(context.TODO(), task)
+	suite.NoError(err, "no error when inserting task")
+	suite.Equal(task, insertedTask)
+}
 
+// Tests FetchTasks function
 func (suite *TaskRepositorySuite) TestFetchTasks() {
-	suite.mtestInstance.AddMockResponses(mtest.CreateCursorResponse(1, "taskmanager.tasks", mtest.FirstBatch, bson.D{
-		{Key: "id", Value: 1},
-		{Key: "title", Value: "Test Task"},
-	}))
+	task := models.Task{Id: 1, Title: "Test Task"}
+	_, err := suite.TaskRepository.InsertTask(context.TODO(), task)
+	suite.NoError(err, "no error when inserting task")
 
-	tasks, err := suite.repo.FetchTasks(context.TODO())
-	suite.NoError(err)
+	tasks, err := suite.TaskRepository.FetchTasks(context.TODO())
+	suite.NoError(err, "no error when fetching tasks")
 	suite.Len(tasks, 1)
 	suite.Equal("Test Task", tasks[0].Title)
 }
 
-func (suite *TaskRepositorySuite) TestInsertTask() {
-	suite.mtestInstance.AddMockResponses(mtest.CreateSuccessResponse())
-
-	task := models.Task{Id: 1, Title: "Test Task"}
-	insertedTask, err := suite.repo.InsertTask(context.TODO(), task)
-	suite.NoError(err)
-	suite.Equal(task, insertedTask)
-}
-
+// Tests FindTask function
 func (suite *TaskRepositorySuite) TestFindTask() {
-	suite.mtestInstance.AddMockResponses(mtest.CreateCursorResponse(1, "taskmanager.tasks", mtest.FirstBatch, bson.D{
-		{Key: "id", Value: 1},
-		{Key: "title", Value: "Test Task"},
-	}))
+	task := models.Task{Id: 1, Title: "Test Task"}
+	_, err := suite.TaskRepository.InsertTask(context.TODO(), task)
+	suite.NoError(err, "no error when inserting task")
 
-	task, err := suite.repo.FindTask(context.TODO(), 1)
-	suite.NoError(err)
-	suite.Equal(1, task.Id)
-	suite.Equal("Test Task", task.Title)
+	foundTask, err := suite.TaskRepository.FindTask(context.TODO(), 1)
+	suite.NoError(err, "no error when finding task")
+	suite.Equal(task, foundTask)
 }
 
+// Tests UpdateTask function
 func (suite *TaskRepositorySuite) TestUpdateTask() {
-	suite.mtestInstance.AddMockResponses(mtest.CreateSuccessResponse())
+	task := models.Task{Id: 1, Title: "Test Task"}
+	_, err := suite.TaskRepository.InsertTask(context.TODO(), task)
+	suite.NoError(err, "no error when inserting task")
 
-	updatedTask, err := suite.repo.UpdateTask(context.TODO(), 1, "Updated Title")
-	suite.NoError(err)
-	suite.Equal("Updated Title", updatedTask.Title)
+	updatedTask, err := suite.TaskRepository.UpdateTask(context.TODO(), 1, "Updated Task")
+	suite.NoError(err, "no error when updating task")
+	suite.Equal("Updated Task", updatedTask.Title)
 }
 
+// Tests DeleteTask function
 func (suite *TaskRepositorySuite) TestDeleteTask() {
-	suite.mtestInstance.AddMockResponses(mtest.CreateSuccessResponse())
+	task := models.Task{Id: 1, Title: "Test Task"}
+	_, err := suite.TaskRepository.InsertTask(context.TODO(), task)
+	suite.NoError(err, "no error when inserting task")
 
-	err := suite.repo.DeleteTask(context.TODO(), 1)
-	suite.NoError(err)
+	err = suite.TaskRepository.DeleteTask(context.TODO(), 1)
+	suite.NoError(err, "no error when deleting task")
+
+	tasks, err := suite.TaskRepository.FetchTasks(context.TODO())
+	suite.NoError(err, "no error when fetching tasks")
+	suite.Len(tasks, 0, "no tasks should remain")
 }
 
 func TestTaskRepositorySuite(t *testing.T) {
