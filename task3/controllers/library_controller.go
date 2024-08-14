@@ -3,10 +3,10 @@ package controllers
 import (
 	"fmt"
 	"log"
-	"task3/services"
+	"task3/models"	
 )
 
-func HandleAddBook(library *services.Library) {
+func HandleAddBook(library models.LibraryManager) {
 	var id int
 	var title, author string
 	fmt.Print("Enter book ID: ")
@@ -15,8 +15,8 @@ func HandleAddBook(library *services.Library) {
 	fmt.Scanln(&title)
 	fmt.Print("Enter book author: ")
 	fmt.Scanln(&author)
-
-	err := library.AddBook( title, id,  author)
+	book := models.Book{ Id: id, Title: title,  Author: author, Status: models.Available}
+	err := library.AddBooK(&book)
 	if err != nil || id < 1{
 		log.Println("Error:", "Invalid Input")
 	} else {
@@ -24,11 +24,11 @@ func HandleAddBook(library *services.Library) {
 	}
 }
 
-func HandleRemoveBook(library *services.Library) {
+func HandleRemoveBook(library models.LibraryManager) {
 	var id int
 	fmt.Print("Enter book ID to remove: ")
 	fmt.Scanln(&id)
-	err := library.RemoveBook(id)
+	err := library.RemoveBook(&id)
 	if err != nil {
 		log.Println("Error:", err)
 	} else {
@@ -36,13 +36,13 @@ func HandleRemoveBook(library *services.Library) {
 	}
 }
 
-func HandleBorrowBook(library *services.Library) {
+func HandleBorrowBook(library models.LibraryManager) {
 	var bookID, memberID int
 	fmt.Print("Enter book ID to borrow: ")
 	fmt.Scanln(&bookID)
 	fmt.Print("Enter member ID: ")
 	fmt.Scanln(&memberID)
-	err := library.BorrowBook(bookID, memberID)
+	err := library.BorrowBook(&bookID, &memberID)
 	if err != nil {
 		log.Println("Error:", err)
 	} else {
@@ -50,13 +50,13 @@ func HandleBorrowBook(library *services.Library) {
 	}
 }
 
-func HandleReturnBook(library *services.Library) {
+func HandleReturnBook(library models.LibraryManager) {
 	var bookID, memberID int
 	fmt.Print("Enter book ID to return: ")
 	fmt.Scanln(&bookID)
 	fmt.Print("Enter member ID: ")
 	fmt.Scanln(&memberID)
-	err := library.ReturnBook(bookID, memberID)
+	err := library.ReturnBook(&bookID, &memberID)
 	if err != nil {
 		log.Println("Error:", err)
 	} else {
@@ -64,7 +64,7 @@ func HandleReturnBook(library *services.Library) {
 	}
 }
 
-func HandleListAvailableBooks(library *services.Library) {
+func HandleListAvailableBooks(library models.LibraryManager) {
 	books := library.ListAvailableBooks()
 	fmt.Println("Available Books:")
 	for _, book := range books {
@@ -72,15 +72,11 @@ func HandleListAvailableBooks(library *services.Library) {
 	}
 }
 
-func HandleListBorrowedBooks(library *services.Library) {
+func HandleListBorrowedBooks(library models.LibraryManager) {
 	var memberID int
 	fmt.Print("Enter member ID: ")
 	fmt.Scanln(&memberID)
-	books, err := library.ListBorrowedBooks(memberID)
-	if err != nil {
-		log.Println("Error:", err)
-		return
-	}
+	books := library.ListBorrowedBooks(&memberID)
 	fmt.Println("Borrowed Books:")
 	for _, book := range books {
 		fmt.Printf("ID: %d, Title: %s, Author: %s\n", book.Id, book.Title, book.Author)
