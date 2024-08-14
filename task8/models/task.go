@@ -30,3 +30,11 @@ type TaskUsecase interface {
 	Create(ctx context.Context,task Task) (Task , error)
 }
 
+type TaskController interface {
+	GetAllTasksHandler(ctx context.Context) ([]Task, error )
+	GetTaskHandler(ctx context.Context, id int) (Task , error)
+	UpdateTaskHandler(ctx context.Context, id int, title string) (Task, error)
+	DeleteTaskHandler(ctx context.Context, id int) (error)
+	CreateTaskHandler(ctx context.Context,task Task) (Task , error)
+}
+

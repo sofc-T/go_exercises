@@ -1,139 +1,174 @@
 package controllers_test
 
 import (
-	"context"
-	"io/ioutil"
+	"bytes"
+	"encoding/json"
+	
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sofc-t/task_manager/task8/controllers"
+	"github.com/sofc-t/task_manager/task8/mocks"
 	"github.com/sofc-t/task_manager/task8/models"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
-// MockTaskUsecase is a mock implementation of the TaskUsecase interface
-type MockTaskUsecase struct {
-	mock.Mock
-}
-
-func (m *MockTaskUsecase) Fetch(ctx context.Context) ([]models.Task, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]models.Task), args.Error(1)
-}
-
-func (m *MockTaskUsecase) Find(ctx context.Context, id int) (models.Task, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(models.Task), args.Error(1)
-}
-
-func (m *MockTaskUsecase) Update(ctx context.Context, id int, title string) (models.Task, error) {
-	args := m.Called(ctx, id, title)
-	return args.Get(0).(models.Task), args.Error(1)
-}
-
-func (m *MockTaskUsecase) Delete(ctx context.Context, id int) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockTaskUsecase) Create(ctx context.Context, task models.Task) (models.Task, error) {
-	args := m.Called(ctx, task)
-	return args.Get(0).(models.Task), args.Error(1)
-}
-
-// TaskControllerTestSuite is the test suite for TaskController
-type TaskControllerTestSuite struct {
+type TaskControllerSuite struct {
 	suite.Suite
-	router       *gin.Engine
-	mockUsecase  *MockTaskUsecase
-	taskController *controllers.TaskController
+	controller    controllers.TaskController
+	mockUsecase   *mocks.TaskUsecase
+	mockResponse  *httptest.ResponseRecorder
 }
 
-func (suite *TaskControllerTestSuite) SetupTest() {
-	suite.mockUsecase = new(MockTaskUsecase)
-	suite.taskController = &controllers.TaskController{TaskUsecase: suite.mockUsecase}
-	suite.router = gin.Default()
-
-	// Set up routes
-	suite.router.GET("/tasks", suite.taskController.GetAllTasksHandler)
-	suite.router.GET("/tasks/:id", suite.taskController.GetTaskHandler)
-	suite.router.PUT("/tasks/:id", suite.taskController.UpdateTaskHandler)
-	suite.router.DELETE("/tasks/:id", suite.taskController.DeleteTaskHandler)
-	suite.router.POST("/tasks", suite.taskController.CreateTaskHandler)
+func (suite *TaskControllerSuite) SetupSuite() {
+	suite.mockUsecase = new(mocks.TaskUsecase)
+	suite.controller = controllers.TaskController{TaskUsecase: suite.mockUsecase}
 }
 
-func (suite *TaskControllerTestSuite) TestGetAllTasks() {
-	mockTasks := []models.Task{
-		{Id: 1, Title: "Task 1"},
-		{Id: 2, Title: "Task 2"},
+func (suite *TaskControllerSuite) SetupTest() {
+	gin.SetMode(gin.TestMode)
+	suite.mockResponse = httptest.NewRecorder()
+}
+
+func (suite *TaskControllerSuite) TestGetAllTasksHandler_Success() {
+	tasks := []models.Task{
+		{Id: 1, Title: "Test Task 1"},
+		{Id: 2, Title: "Test Task 2"},
 	}
+	suite.mockUsecase.On("Fetch", mock.Anything).Return(tasks, nil)
 
-	suite.mockUsecase.On("Fetch", mock.Anything).Return(mockTasks, nil)
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
 
-	req, _ := http.NewRequest("GET", "/tasks", nil)
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
+	suite.controller.GetAllTasksHandler(ctx)
 
-	assert.Equal(suite.T(), http.StatusAccepted, w.Code)
-	
+	suite.mockUsecase.AssertCalled(suite.T(), "Fetch", mock.Anything)
+	suite.Equal(http.StatusAccepted, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "Test Task 1")
+	suite.Contains(suite.mockResponse.Body.String(), "Test Task 2")
 }
+func (suite *TaskControllerSuite) TestGetTaskHandler_Success() {
+    taskId := 1
+    task := models.Task{Id: taskId, Title: "Test Task"} 
 
-func (suite *TaskControllerTestSuite) TestGetTask() {
-	mockTask := models.Task{Id: 1, Title: "Task 1"}
+    suite.mockUsecase.On("Find", mock.Anything, taskId).Return(task, nil)
 
-	suite.mockUsecase.On("Find", mock.Anything, 1).Return(mockTask, nil)
+    ctx, _ := gin.CreateTestContext(suite.mockResponse)
+    ctx.Params = gin.Params{gin.Param{Key: "id", Value: strconv.Itoa(taskId)}}
 
-	req, _ := http.NewRequest("GET", "/tasks/1", nil)
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
+    suite.controller.GetTaskHandler(ctx)
 
-	assert.Equal(suite.T(), http.StatusOK, w.Code)
-	
-}
+    suite.mockUsecase.AssertCalled(suite.T(), "Find", mock.Anything, taskId)
 
-func (suite *TaskControllerTestSuite) TestUpdateTask() {
-	mockTask := models.Task{Id: 1, Title: "Updated Task"}
-
-	suite.mockUsecase.On("Update", mock.Anything, 1, "Updated Task").Return(mockTask, nil)
-
-	req, _ := http.NewRequest("PUT", "/tasks/1", nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Body = ioutil.NopCloser(strings.NewReader(`{"Title":"Updated Task"}`))
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
-
-	assert.Equal(suite.T(), http.StatusAccepted, w.Code)
-	
-}
-
-func (suite *TaskControllerTestSuite) TestDeleteTask() {
-	suite.mockUsecase.On("Delete", mock.Anything, 1).Return(nil)
-
-	req, _ := http.NewRequest("DELETE", "/tasks/1", nil)
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
-
-	assert.Equal(suite.T(), http.StatusNoContent, w.Code)
-}
-
-func (suite *TaskControllerTestSuite) TestCreateTask() {
-	mockTask := models.Task{Id: 1, Title: "New Task"}
-
-	suite.mockUsecase.On("Create", mock.Anything, mockTask).Return(mockTask, nil)
-
-	req, _ := http.NewRequest("POST", "/tasks", nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Body = ioutil.NopCloser(strings.NewReader(`{"Title":"New Task"}`))
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
+    suite.Equal(http.StatusOK, suite.mockResponse.Code)
 
 }
 
-func TestTaskControllerTestSuite(t *testing.T) {
-	suite.Run(t, new(TaskControllerTestSuite))
+func (suite *TaskControllerSuite) TestGetTaskHandler_InvalidId() {
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	ctx.Params = gin.Params{gin.Param{Key: "id", Value: "invalid"}}
+
+	suite.controller.GetTaskHandler(ctx)
+
+	suite.Equal(http.StatusBadRequest, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "Invalid ID")
+}
+func (suite *TaskControllerSuite) TestUpdateTaskHandler_Success() {
+    taskId := 1
+    task := models.Task{Id: taskId, Title: "Updated Task"}
+
+    suite.mockUsecase.On("Update", mock.Anything, taskId, task.Title).Return(task, nil)
+    ctx, _ := gin.CreateTestContext(suite.mockResponse)
+    ctx.Params = gin.Params{gin.Param{Key: "id", Value: strconv.Itoa(taskId)}}
+
+    jsonTask, _ := json.Marshal(task)
+    ctx.Request, _ = http.NewRequest(http.MethodPut, "/tasks/"+strconv.Itoa(taskId), bytes.NewBuffer(jsonTask))
+    ctx.Request.Header.Set("Content-Type", "application/json")
+
+    suite.controller.UpdateTaskHandler(ctx)
+    suite.mockUsecase.AssertCalled(suite.T(), "Update", mock.Anything, taskId, task.Title)
+    suite.Equal(http.StatusAccepted, suite.mockResponse.Code)
+    suite.Contains(suite.mockResponse.Body.String(), "Updated Task")
+}
+
+
+func (suite *TaskControllerSuite) TestUpdateTaskHandler_InvalidId() {
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	ctx.Params = gin.Params{gin.Param{Key: "id", Value: "invalid"}}
+
+	task := models.Task{Title: "Updated Task"}
+	jsonTask, _ := json.Marshal(task)
+	ctx.Request, _ = http.NewRequest(http.MethodPut, "/tasks/invalid", bytes.NewBuffer(jsonTask))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	suite.controller.UpdateTaskHandler(ctx)
+
+	suite.Equal(http.StatusBadRequest, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "Invalid ID")
+}
+func (suite *TaskControllerSuite) TestDeleteTaskHandler_Success() {
+    taskId := 1
+    
+    suite.mockUsecase.On("Delete", mock.Anything, taskId).Return(nil)
+
+    ctx, _ := gin.CreateTestContext(suite.mockResponse)
+    ctx.Params = gin.Params{gin.Param{Key: "id", Value: strconv.Itoa(taskId)}}
+
+    ctx.Request, _ = http.NewRequest(http.MethodDelete, "/tasks/"+strconv.Itoa(taskId), nil)
+
+    suite.controller.DeleteTaskHandler(ctx)
+
+    suite.mockUsecase.AssertCalled(suite.T(), "Delete", mock.Anything, taskId)
+
+}
+
+
+
+func (suite *TaskControllerSuite) TestDeleteTaskHandler_InvalidId() {
+	suite.mockUsecase.On("Delete", mock.Anything, mock.AnythingOfType("int")).Return(nil)
+
+suite.mockResponse = httptest.NewRecorder()
+ctx, _ := gin.CreateTestContext(suite.mockResponse)
+ctx.Request, _ = http.NewRequest(http.MethodDelete, "/tasks/invalid", nil)
+
+suite.controller.DeleteTaskHandler(ctx)
+
+suite.Equal(http.StatusBadRequest, suite.mockResponse.Code)
+
+
+}
+func (suite *TaskControllerSuite) TestCreateTaskHandler_Success() {
+	task := models.Task{Id: 1, Title: "New Task"}
+	suite.mockUsecase.On("Create", mock.Anything, mock.Anything).Return(models.Task{Id: 1, Title: "Test Task"}, nil)
+
+
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+
+	jsonTask, _ := json.Marshal(task)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/tasks", bytes.NewBuffer(jsonTask))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	suite.controller.CreateTaskHandler(ctx)
+
+	suite.mockUsecase.AssertCalled(suite.T(), "Create", mock.Anything, task)
+	suite.Equal(http.StatusCreated, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "Test Task")
+}
+
+func (suite *TaskControllerSuite) TestCreateTaskHandler_InvalidInput() {
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/tasks", bytes.NewBuffer([]byte("{invalid json}")))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	suite.controller.CreateTaskHandler(ctx)
+
+	suite.Equal(http.StatusBadRequest, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "Invalid Input")
+}
+
+func TestTaskControllerSuite(t *testing.T) {
+	suite.Run(t, new(TaskControllerSuite))
 }

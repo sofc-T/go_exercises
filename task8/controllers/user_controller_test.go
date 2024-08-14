@@ -1,124 +1,168 @@
 package controllers_test
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sofc-t/task_manager/task8/controllers"
+	"github.com/sofc-t/task_manager/task8/mocks"
 	"github.com/sofc-t/task_manager/task8/models"
-	
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// MockUserUsecase is a mock implementation of the UserUsecase interface
-type MockUserUsecase struct {
-	mock.Mock
-}
-
-func (m *MockUserUsecase) Create(ctx context.Context, user models.User) error {
-	args := m.Called(ctx, user)
-	return args.Error(0)
-}
-
-func (m *MockUserUsecase) Login(ctx context.Context, user models.User) (string, error) {
-	args := m.Called(ctx, user)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockUserUsecase) FetchById(ctx context.Context, id string) (models.User, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(models.User), args.Error(1)
-}
-
-func (m *MockUserUsecase) PromoteUser(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockUserUsecase) FetchAll(ctx context.Context) ([]models.User, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]models.User), args.Error(1)
-}
-
-// UserControllerSuite is a test suite for UserController
 type UserControllerSuite struct {
 	suite.Suite
-	mockUsecase *MockUserUsecase
-	uc          controllers.UserController
-	router      *gin.Engine
+	controller    controllers.UserController
+	mockUsecase   *mocks.UserUsecase
+	mockResponse  *httptest.ResponseRecorder
 }
 
-// SetupSuite runs once before the suite's tests are run
 func (suite *UserControllerSuite) SetupSuite() {
+	suite.mockUsecase = new(mocks.UserUsecase)
+	suite.controller = controllers.UserController{UserUsecase: suite.mockUsecase}
+}
+
+func (suite *UserControllerSuite) SetupTest() {
 	gin.SetMode(gin.TestMode)
-	suite.mockUsecase = new(MockUserUsecase)
-	suite.uc = controllers.UserController{UserUsecase: suite.mockUsecase}
-	suite.router = gin.Default()
+	suite.mockResponse = httptest.NewRecorder()
 }
 
-// TestSignUp tests the SignUp handler
-func (suite *UserControllerSuite) TestSignUp() {
-	suite.router.POST("/signup", suite.uc.SignUp)
 
-	suite.mockUsecase.On("Create", mock.Anything, mock.AnythingOfType("models.User")).Return(nil)
+func (suite *UserControllerSuite) TestSignUpHandler_Success() {
+	user := models.User{Name: stringPointer("Test User"), Password: stringPointer("Password123"), Email: stringPointer("test@example.com")}
+	suite.mockUsecase.On("Create", mock.Anything, user).Return(nil)
 
-	req, _ := http.NewRequest("POST", "/signup", nil)
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	jsonUser, _ := json.Marshal(user)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(jsonUser))
+	ctx.Request.Header.Set("Content-Type", "application/json")
 
-	
+	suite.controller.SignUp(ctx)
+
+	suite.mockUsecase.AssertCalled(suite.T(), "Create", mock.Anything, user)
+	suite.Equal(http.StatusCreated, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "Signed Up successfully")
 }
 
-// TestLogin tests the Login handler
-func (suite *UserControllerSuite) TestLogin() {
-	suite.router.POST("/login", suite.uc.Login)
 
-	suite.mockUsecase.On("Login", mock.Anything, mock.AnythingOfType("models.User")).Return("mockToken", nil)
+func (suite *UserControllerSuite) TestSignUpHandler_Failure() {
+    
+    req := models.User{ /* Populate with test data as needed */ }
+    expectedError := errors.New("sign up error")
 
-	req, _ := http.NewRequest("POST", "/login", nil)
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
+    
+    suite.mockUsecase.On("Create", mock.Anything, req).Return(expectedError)
 
-	
-	
+    
+    ctx, _ := gin.CreateTestContext(suite.mockResponse)
+    jsonReq, _ := json.Marshal(req)
+    ctx.Request, _ = http.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(jsonReq))
+    ctx.Request.Header.Set("Content-Type", "application/json")
+
+    
+    suite.controller.SignUp(ctx)
+
+    
+    suite.mockUsecase.AssertCalled(suite.T(), "Create", mock.Anything, req)
+
+    
+    suite.Equal(http.StatusInternalServerError, suite.mockResponse.Code)
+    suite.Contains(suite.mockResponse.Body.String(), "sign up error")
 }
 
-// TestGetUserByID tests the GetUseryID handler
-func (suite *UserControllerSuite) TestGetUserByID() {
-	suite.router.GET("/users/:id", suite.uc.GetUseryID)
-	id := primitive.NewObjectID() // Generate a new ObjectID
-	name := "Mock User"  
-	mockUser := models.User{ID: id, Name: &name}
-	suite.mockUsecase.On("FetchById", mock.Anything, "mockID").Return(mockUser, nil)
 
-	req, _ := http.NewRequest("GET", "/users/mockID", nil)
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
 
-	
-	suite.mockUsecase.AssertExpectations(suite.T())
+func (suite *UserControllerSuite) TestLoginHandler_Success() {
+	user := models.User{Email: stringPointer("test@example.com"), Password: stringPointer("Password123")}
+	token := "some-token"
+	suite.mockUsecase.On("Login", mock.Anything, user).Return(token, nil)
+
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	jsonUser, _ := json.Marshal(user)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(jsonUser))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	suite.controller.Login(ctx)
+
+	suite.mockUsecase.AssertCalled(suite.T(), "Login", mock.Anything, user)
+	suite.Equal(http.StatusCreated, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "Signed In successfully")
+	suite.Contains(suite.mockResponse.Body.String(), token)
 }
 
-// TestPromoteUser tests the PromoteUser handler
-func (suite *UserControllerSuite) TestPromoteUser() {
-	suite.router.POST("/promote", suite.uc.PromoteUser)
-
-	suite.mockUsecase.On("PromoteUser", mock.Anything, "mockID").Return(nil)
-
-	req, _ := http.NewRequest("POST", "/promote", nil)
-	w := httptest.NewRecorder()
-	suite.router.ServeHTTP(w, req)
 
 
+
+
+func (suite *UserControllerSuite) TestGetUserByIDHandler_Success() {
+	userID := primitive.NewObjectID()
+	user := models.User{ID: userID} 
+
+	suite.mockUsecase.On("FetchById", mock.Anything, userID.Hex()).Return(user, nil)
+
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	ctx.Params = gin.Params{gin.Param{Key: "id", Value: userID.Hex()}}
+
+	suite.controller.GetUseryID(ctx)
+
+	suite.mockUsecase.AssertCalled(suite.T(), "FetchById", mock.Anything, userID.Hex())
 	
+	suite.Contains(suite.mockResponse.Body.String(), userID.Hex())
 }
 
-// Run the test suite
+
+
+func (suite *UserControllerSuite) TestGetUserByIDHandler_Failure() {
+	userID := "" 
+	expectedError := errors.New("Invalid user ID")
+
+	
+	suite.mockUsecase.On("FetchById", mock.Anything, userID).Return(models.User{}, expectedError)
+
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	ctx.Params = gin.Params{gin.Param{Key: "id", Value: userID}}
+
+	
+	suite.controller.GetUseryID(ctx)
+
+	
+	
+
+	
+	suite.Equal(http.StatusBadRequest, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), expectedError.Error())
+}
+
+
+func (suite *UserControllerSuite) TestPromoteUserHandler_Success() {
+	req := models.PromoteUserRequest{ID: "some-id"}
+	suite.mockUsecase.On("PromoteUser", mock.Anything, req.ID).Return(nil)
+
+	ctx, _ := gin.CreateTestContext(suite.mockResponse)
+	jsonReq, _ := json.Marshal(req)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/promote", bytes.NewBuffer(jsonReq))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	suite.controller.PromoteUser(ctx)
+
+	suite.mockUsecase.AssertCalled(suite.T(), "PromoteUser", mock.Anything, req.ID)
+	suite.Equal(http.StatusAccepted, suite.mockResponse.Code)
+	suite.Contains(suite.mockResponse.Body.String(), "User updated successully")
+}
+
+
+
+func stringPointer(s string) *string {
+	return &s
+}
+
 func TestUserControllerSuite(t *testing.T) {
 	suite.Run(t, new(UserControllerSuite))
 }
