@@ -2,114 +2,116 @@ package usecases_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/mock"
 	"github.com/sofc-t/task_manager/task8/models"
 	"github.com/sofc-t/task_manager/task8/usecases"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
+	"github.com/sofc-t/task_manager/task8/mocks"
 )
 
-type MockTaskRepository struct {
-	mock.Mock
-}
-
-func (m *MockTaskRepository) FetchTasks(ctx context.Context) ([]models.Task, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]models.Task), args.Error(1)
-}
-
-func (m *MockTaskRepository) FindTask(ctx context.Context, id int) (models.Task, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(models.Task), args.Error(1)
-}
-
-func (m *MockTaskRepository) UpdateTask(ctx context.Context, id int, title string) (models.Task, error) {
-	args := m.Called(ctx, id, title)
-	return args.Get(0).(models.Task), args.Error(1)
-}
-
-func (m *MockTaskRepository) DeleteTask(ctx context.Context, id int) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockTaskRepository) InsertTask(ctx context.Context, task models.Task) (models.Task, error) {
-	args := m.Called(ctx, task)
-	return args.Get(0).(models.Task), args.Error(1)
-}
-
-type TaskUsecaseSuite struct {
+type TaskUsecaseTestSuite struct {
 	suite.Suite
-	mockRepo *MockTaskRepository
-	usecase  models.TaskUsecase
+	usecase         *usecases.TaskUsecase
+	taskRepository  *mocks.TaskRepository
+	ctx             context.Context
+	timeout         time.Duration
 }
 
-func (suite *TaskUsecaseSuite) SetupTest() {
-	suite.mockRepo = new(MockTaskRepository)
-	suite.usecase = usecases.NewTaskUsecase(suite.mockRepo, 1000*time.Second)
+func (suite *TaskUsecaseTestSuite) SetupTest() {
+	suite.timeout = 1000 * time.Second
+	suite.taskRepository = mocks.NewTaskRepository(suite.T())
+	suite.usecase = usecases.NewTaskUsecase(suite.taskRepository, suite.timeout)
+	suite.ctx = context.Background()
 }
 
-func (suite *TaskUsecaseSuite) TestFetch() {
-	task1 := models.Task{Id: 1, Title: "Task 1"}
-	task2 := models.Task{Id: 2, Title: "Task 2"}
-	tasks := []models.Task{task1, task2}
+// TestFetch tests both successful and failed fetch operations
+func (suite *TaskUsecaseTestSuite) TestFetch() {
+	tasks := []models.Task{
+		{Id: 1, Title: "Task 1", TaskId: 1},
+		{Id: 2, Title: "Task 2", TaskId: 2},
+	}
 
-	suite.mockRepo.On("FetchTasks", mock.Anything).Return(tasks, nil)
-
-	result, err := suite.usecase.Fetch(context.Background())
-
+	suite.taskRepository.On("FetchTasks", mock.Anything).Return(tasks, nil).Once()
+	result, err := suite.usecase.Fetch(suite.ctx)
 	suite.NoError(err)
 	suite.ElementsMatch(tasks, result)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.taskRepository.AssertExpectations(suite.T())
+
+	suite.taskRepository.On("FetchTasks", mock.Anything).Return(nil, errors.New("fetch error")).Once()
+	result, err = suite.usecase.Fetch(suite.ctx)
+	suite.Error(err)
+	suite.Nil(result)
+	suite.taskRepository.AssertExpectations(suite.T())
 }
 
-func (suite *TaskUsecaseSuite) TestFind() {
-	task := models.Task{Id: 1, Title: "Task 1"}
+// TestFind tests both successful and failed find operations
+func (suite *TaskUsecaseTestSuite) TestFind() {
+	task := models.Task{Id: 1, Title: "Task 1", TaskId: 1}
 
-	suite.mockRepo.On("FindTask", mock.Anything, 1).Return(task, nil)
-
-	result, err := suite.usecase.Find(context.Background(), 1)
-
+	suite.taskRepository.On("FindTask", mock.Anything, 1).Return(task, nil).Once()
+	result, err := suite.usecase.Find(suite.ctx, 1)
 	suite.NoError(err)
 	suite.Equal(task, result)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.taskRepository.AssertExpectations(suite.T())
+
+	suite.taskRepository.On("FindTask", mock.Anything, 1).Return(models.Task{}, errors.New("find error")).Once()
+	result, err = suite.usecase.Find(suite.ctx, 1)
+	suite.Error(err)
+	suite.Equal(models.Task{}, result)
+	suite.taskRepository.AssertExpectations(suite.T())
 }
 
-func (suite *TaskUsecaseSuite) TestUpdate() {
-	task := models.Task{Id: 1, Title: "Updated Task"}
+// TestUpdate tests both successful and failed update operations
+func (suite *TaskUsecaseTestSuite) TestUpdate() {
+	task := models.Task{Id: 1, Title: "Updated Task", TaskId: 1}
 
-	suite.mockRepo.On("UpdateTask", mock.Anything, 1, "Updated Task").Return(task, nil)
-
-	result, err := suite.usecase.Update(context.Background(), 1, "Updated Task")
-
+	suite.taskRepository.On("UpdateTask", mock.Anything, 1, "Updated Task").Return(task, nil).Once()
+	result, err := suite.usecase.Update(suite.ctx, 1, "Updated Task")
 	suite.NoError(err)
 	suite.Equal(task, result)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.taskRepository.AssertExpectations(suite.T())
+
+	suite.taskRepository.On("UpdateTask", mock.Anything, 1, "Updated Task").Return(models.Task{}, errors.New("update error")).Once()
+	result, err = suite.usecase.Update(suite.ctx, 1, "Updated Task")
+	suite.Error(err)
+	suite.Equal(models.Task{}, result)
+	suite.taskRepository.AssertExpectations(suite.T())
 }
 
-func (suite *TaskUsecaseSuite) TestDelete() {
-	suite.mockRepo.On("DeleteTask", mock.Anything, 1).Return(nil)
-
-	err := suite.usecase.Delete(context.Background(), 1)
-
+// TestDelete tests both successful and failed delete operations
+func (suite *TaskUsecaseTestSuite) TestDelete() {
+	suite.taskRepository.On("DeleteTask", mock.Anything, 1).Return(nil).Once()
+	err := suite.usecase.Delete(suite.ctx, 1)
 	suite.NoError(err)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.taskRepository.AssertExpectations(suite.T())
+
+	suite.taskRepository.On("DeleteTask", mock.Anything, 1).Return(errors.New("delete error")).Once()
+	err = suite.usecase.Delete(suite.ctx, 1)
+	suite.Error(err)
+	suite.taskRepository.AssertExpectations(suite.T())
 }
 
-func (suite *TaskUsecaseSuite) TestCreate() {
-	task := models.Task{Id: 1, Title: "New Task"}
+// TestCreate tests both successful and failed create operations
+func (suite *TaskUsecaseTestSuite) TestCreate() {
+	task := models.Task{Id: 1, Title: "New Task", TaskId: 1}
 
-	suite.mockRepo.On("InsertTask", mock.Anything, task).Return(task, nil)
-
-	result, err := suite.usecase.Create(context.Background(), task)
-
+	suite.taskRepository.On("InsertTask", mock.Anything, task).Return(task, nil).Once()
+	result, err := suite.usecase.Create(suite.ctx, task)
 	suite.NoError(err)
 	suite.Equal(task, result)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.taskRepository.AssertExpectations(suite.T())
+
+	suite.taskRepository.On("InsertTask", mock.Anything, task).Return(models.Task{}, errors.New("create error")).Once()
+	result, err = suite.usecase.Create(suite.ctx, task)
+	suite.Error(err)
+	suite.Equal(models.Task{}, result)
+	suite.taskRepository.AssertExpectations(suite.T())
 }
 
-func TestTaskUsecaseSuite(t *testing.T) {
-	suite.Run(t, new(TaskUsecaseSuite))
+func TestTaskUsecaseTestSuite(t *testing.T) {
+	suite.Run(t, new(TaskUsecaseTestSuite))
 }

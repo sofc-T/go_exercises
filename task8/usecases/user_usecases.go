@@ -12,9 +12,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type userUsecase struct {
-	userRepositry models.UserRepository
-	timeOut       time.Duration
+type UserUsecase struct {
+	UserRepositry models.UserRepository
+	TimeOut       time.Duration
 }
 
 var (
@@ -25,10 +25,10 @@ var (
 	guest        = &gue
 )
 
-func NewUserUsecase(userRepositry models.UserRepository, timeOut time.Duration) *userUsecase {
-	return &userUsecase{
-		userRepositry: userRepositry,
-		timeOut:       timeOut,
+func NewUserUsecase(UserRepositry models.UserRepository, TimeOut time.Duration) *UserUsecase {
+	return &UserUsecase{
+		UserRepositry: UserRepositry,
+		TimeOut:       TimeOut,
 	}
 }
 
@@ -43,8 +43,8 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), nil
 }
 
-func (u userUsecase) Create(ctx context.Context, user models.User) error {
-	ctx, cancel := context.WithTimeout(ctx, u.timeOut)
+func (u UserUsecase) Create(ctx context.Context, user models.User) error {
+	ctx, cancel := context.WithTimeout(ctx, u.TimeOut)
 	defer cancel()
 
 	if !adminCreated {
@@ -78,34 +78,34 @@ func (u userUsecase) Create(ctx context.Context, user models.User) error {
 	user.Token = token
 	user.RefreshToken = refreshToken
 
-	return u.userRepositry.CreateUser(ctx, user)
+	return u.UserRepositry.CreateUser(ctx, user)
 
 }
 
-func (u userUsecase) Login(ctx context.Context, user models.User) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, u.timeOut)
+func (u UserUsecase) Login(ctx context.Context, user models.User) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.TimeOut)
 	defer cancel()
-	return u.userRepositry.Login(ctx, user)
+	return u.UserRepositry.Login(ctx, user)
 
 }
 
-func (u userUsecase) FetchAll(ctx context.Context) ([]models.User, error) {
-	ctx, cancel := context.WithTimeout(ctx, u.timeOut)
+func (u UserUsecase) FetchAll(ctx context.Context) ([]models.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.TimeOut)
 	defer cancel()
-	return u.userRepositry.FetchAllUsers(ctx)
+	return u.UserRepositry.FetchAllUsers(ctx)
 
 }
 
-func (u userUsecase) FetchById(ctx context.Context, id string) (models.User, error) {
-	ctx, cancel := context.WithTimeout(ctx, u.timeOut)
+func (u UserUsecase) FetchById(ctx context.Context, id string) (models.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.TimeOut)
 	defer cancel()
-	return u.userRepositry.FetchByID(ctx, id)
+	return u.UserRepositry.FetchByID(ctx, id)
 
 }
 
-func (u userUsecase) PromoteUser(ctx context.Context, id string) error {
-	ctx, cancel := context.WithTimeout(ctx, u.timeOut)
+func (u UserUsecase) PromoteUser(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, u.TimeOut)
 	defer cancel()
-	return u.userRepositry.PromoteUser(ctx, id)
+	return u.UserRepositry.PromoteUser(ctx, id)
 
 }

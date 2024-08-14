@@ -2,113 +2,165 @@ package usecases_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/sofc-t/task_manager/task8/mocks"
 	"github.com/sofc-t/task_manager/task8/models"
 	"github.com/sofc-t/task_manager/task8/usecases"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type MockUserRepository struct {
-	mock.Mock
-}
-
-func (m *MockUserRepository) CreateUser(ctx context.Context, user models.User) error {
-	args := m.Called(ctx, user)
-	return args.Error(0)
-}
-
-func (m *MockUserRepository) Login(ctx context.Context, user models.User) (string, error) {
-	args := m.Called(ctx, user)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockUserRepository) FetchAllUsers(ctx context.Context) ([]models.User, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]models.User), args.Error(1)
-}
-
-func (m *MockUserRepository) FetchByID(ctx context.Context, id string) (models.User, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(models.User), args.Error(1)
-}
-
-func (m *MockUserRepository) PromoteUser(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-// UserUsecaseSuite is a test suite for the UserUsecase
-type UserUsecaseSuite struct {
+type UserUsecaseTestSuite struct {
 	suite.Suite
-	mockRepo *MockUserRepository
-	usecase  models.UserUsecase // Use the interface, not the concrete struct
+	userRepo *mocks.UserRepository
+	usecase  usecases.UserUsecase
 }
 
-func (suite *UserUsecaseSuite) SetupTest() {
-	suite.mockRepo = new(MockUserRepository)
-	suite.usecase = usecases.NewUserUsecase(suite.mockRepo, 1000*time.Second) // Use the factory function
+func (suite *UserUsecaseTestSuite) SetupTest() {
+	suite.userRepo = &mocks.UserRepository{}
+	suite.usecase = *usecases.NewUserUsecase(suite.userRepo, 1000 * time.Second)
 }
 
+// func (suite *UserUsecaseTestSuite) TestCreateUser_Success() {
+// 	// Arrange
+
+// 	user := models.User{
+// 		ID:    primitive.NewObjectID(),
+// 		Name:  stringPtr(name),
+// 		Email: stringPtr(email),
+// 	}
+
+// 	suite.userRepo.On("CreateUser", mock.Anything, user).Return(nil).Once()
+
+// 	// Act
+// 	err := suite.usecase.Create(context.TODO(), user)
+
+// 	// Assert
+// 	suite.NoError(err)
+// 	suite.userRepo.AssertExpectations(suite.T())
+// }
 
 
-func (suite *UserUsecaseSuite) TestLogin() {
 
-	name, email := "John Doe", "john.doe@example.com"
-	password:= mock.Anything
-	user := models.User{Name: &name, Email: &email, Password: &password}
-	suite.mockRepo.On("Login", mock.Anything, user).Return("mockToken", nil)
+
+
+func (suite *UserUsecaseTestSuite) TestCreateUser_Success() {
+		p := "password123"
+			name:= "John Doe"
+			email := "john.doe@example.com"
+			amdin := "admin"
+			user := models.User{
+			Name:         stringPtr(name),
+			Password:     stringPtr(p),
+			Email:        stringPtr(email),
+			Role:         stringPtr(amdin),
+			CreatedAt:    time.Now(),
+			UpdatedAT:    time.Now(),
+			UserID:       "66bd0d1f16be6a49b496a9c7",
+		}
+	
+		ctx :=  context.Background																																																																												()
+		suite.userRepo.On("CreateUser", mock.AnythingOfType("*context.timerCtx"), mock.AnythingOfType("models.User")).Return(nil)
+	
+		err := suite.usecase.Create(ctx, user)
+	
+		assert.NoError(suite.T(), err)
+		suite.userRepo.AssertExpectations(suite.T())
+	}
+
+func (suite *UserUsecaseTestSuite) TestLogin_Success() {
+	p := "password123"
+	user := models.User{
+		Email:    stringPointer("test@example.com"),
+		Password: stringPointer(p),
+	}
+	expectedToken := "someToken"
+
+	suite.userRepo.On("Login", mock.Anything, user).Return(expectedToken, nil)
 
 	token, err := suite.usecase.Login(context.Background(), user)
-
 	suite.NoError(err)
-	suite.Equal("mockToken", token)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.Equal(expectedToken, token)
+	suite.userRepo.AssertExpectations(suite.T())
 }
 
-func (suite *UserUsecaseSuite) TestFetchAll() {
-
-	name1, name2 := "John Doe", "Jane Doe"
-	id1, id2 := primitive.NewObjectID(), primitive.NewObjectID()
-	users := []models.User{
-		{ID: id1, Name: &name1},
-		{ID: id2, Name: &name2},
+func (suite *UserUsecaseTestSuite) TestLogin_Error() {
+	user := models.User{
+		Email:    stringPointer("test@example.com"),
+		Password: stringPointer("password123"),
 	}
-	suite.mockRepo.On("FetchAllUsers", mock.Anything).Return(users, nil)
+
+	suite.userRepo.On("Login", mock.Anything, user).Return("", errors.New("error"))
+
+	token, err := suite.usecase.Login(context.Background(), user)
+	suite.Error(err)
+	suite.Empty(token)
+	suite.userRepo.AssertExpectations(suite.T())
+}
+
+func (suite *UserUsecaseTestSuite) TestFetchAll_Success() {
+	users := []models.User{
+		{Email: stringPointer("test1@example.com")},
+		{Email: stringPointer("test2@example.com")},
+	}
+
+	suite.userRepo.On("FetchAllUsers", mock.Anything).Return(users, nil)
 
 	result, err := suite.usecase.FetchAll(context.Background())
-
 	suite.NoError(err)
-	suite.ElementsMatch(users, result)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.Len(result, 2)
+	suite.Equal(users, result)
+	suite.userRepo.AssertExpectations(suite.T())
 }
 
-func (suite *UserUsecaseSuite) TestFetchById() {
-	name, email := "John Doe", "john.doe@example.com"
-	password:= mock.Anything
-	user := models.User{Name: &name, Email: &email, Password: &password}
+func (suite *UserUsecaseTestSuite) TestFetchById_Success() {
+	ID := primitive.NewObjectID().Hex()
+	user := models.User{UserID: ID}
 
-	suite.mockRepo.On("FetchByID", mock.Anything, "1").Return(user, nil)
+	suite.userRepo.On("FetchByID", mock.Anything, ID).Return(user, nil)
 
-	result, err := suite.usecase.FetchById(context.Background(), "1")
-
+	result,  err := suite.usecase.FetchById(context.Background(), ID)
+	
 	suite.NoError(err)
-	suite.Equal(user, result)
-	suite.mockRepo.AssertExpectations(suite.T())
+	
+	suite.Equal(result, user)
+	suite.userRepo.AssertExpectations(suite.T())
 }
 
-func (suite *UserUsecaseSuite) TestPromoteUser() {
-	suite.mockRepo.On("PromoteUser", mock.Anything, "1").Return(nil)
+func (suite *UserUsecaseTestSuite) TestPromoteUser_Success() {
+	userID := "someID"
 
-	err := suite.usecase.PromoteUser(context.Background(), "1")
+	suite.userRepo.On("PromoteUser", mock.Anything, userID).Return(nil)
 
+	err := suite.usecase.PromoteUser(context.Background(), userID)
 	suite.NoError(err)
-	suite.mockRepo.AssertExpectations(suite.T())
+	suite.userRepo.AssertExpectations(suite.T())
 }
 
-func TestUserUsecaseSuite(t *testing.T) {
-	suite.Run(t, new(UserUsecaseSuite))
+func (suite *UserUsecaseTestSuite) TestPromoteUser_Error() {
+	userID := "someID"
+
+	suite.userRepo.On("PromoteUser", mock.Anything, userID).Return(errors.New("error"))
+
+	err := suite.usecase.PromoteUser(context.Background(), userID)
+	suite.Error(err)
+	suite.userRepo.AssertExpectations(suite.T())
+}
+
+func stringPointer(s string) *string {
+	return &s
+}
+
+
+func stringPtr(s string) *string {
+	return &s
+}
+func TestUserUsecaseTestSuite(t *testing.T) {
+	suite.Run(t, new(UserUsecaseTestSuite))
 }
